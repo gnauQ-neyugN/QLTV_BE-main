@@ -14,16 +14,25 @@ public class Endpoints {
             "/user/active-account/**",
             "/cart-items/**",
             "/users/*/listCartItems",
+            "/users/*/libraryCard",
             "/orders/**",
             "/order-detail/**",
             "/users/*/listOrders",
             "/users/*/listRoles",
             "/users/*",
+            "/library-cards/**",
+            "/library-card/**",
+            "/library-card/*",
+            "/library-cards/*/borrowRecords",
             "/favorite-book/get-favorite-book/**",
             "/users/*/listFavoriteBooks",
             "/favorite-books/*/book",
             "/vnpay/**",
-
+            "/borrow-record/get-by-library-card/**",
+            "/borrow-records/**",
+            "borrow-records/*/borrowRecordDetails",
+            "/borrow-records/search/findBorrowRecordsByLibraryCard_CardNumber",
+            "/borrow-record-detail/**",
     };
 
     public static final String[] PUBLIC_POST = {
@@ -36,6 +45,8 @@ public class Endpoints {
             "/favorite-book/add-book",
             "/vnpay/create-payment/**",
             "/review/get-review/**",
+            "/borrow-record/add-borrow-record",
+            "/library-card/create",
     };
 
     public static final String[] PUBLIC_PUT = {
@@ -48,7 +59,10 @@ public class Endpoints {
             "/user/change-avatar",
             "/order/update-order",
             "/order/cancel-order",
-            "/review/update-review"
+            "/review/update-review",
+            "/borrow-record/update-borrow-record",
+            "/borrow-record/cancel-borrow-record",
+            "/library-card/create",
     };
 
     public static final String[] PUBLIC_DELETE = {
@@ -76,7 +90,8 @@ public class Endpoints {
             "/review/**",
             "/book/get-total/**",
             "/feedbacks/search/countBy/**",
+            "/borrow-record/**",
+            "/library-card/**",
             "/**",
-
     };
 }
