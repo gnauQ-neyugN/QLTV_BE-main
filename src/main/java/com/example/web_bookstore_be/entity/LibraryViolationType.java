@@ -21,6 +21,9 @@ public class LibraryViolationType {
     @Column(name = "description", nullable = false)
     private String description;
 
+    @Column(name = "fine") // tiền phạt
+    private double fine;
+
     @ManyToMany(mappedBy = "violationTypes")
     private List<LibraryCard> libraryCards;
 }

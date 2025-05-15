@@ -52,4 +52,14 @@ public class BorrowController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PutMapping("/return-1-book")
+    public ResponseEntity<?> return1Book(@RequestBody JsonNode jsonData) {
+        try {
+            return borrowRecordService.return1Book(jsonData);
+        }catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

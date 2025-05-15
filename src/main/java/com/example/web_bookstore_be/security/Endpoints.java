@@ -33,6 +33,7 @@ public class Endpoints {
             "borrow-records/*/borrowRecordDetails",
             "/borrow-records/search/findBorrowRecordsByLibraryCard_CardNumber",
             "/borrow-record-detail/**",
+            "/library-violation-types/**",
     };
 
     public static final String[] PUBLIC_POST = {
@@ -47,6 +48,7 @@ public class Endpoints {
             "/review/get-review/**",
             "/borrow-record/add-borrow-record",
             "/library-card/create",
+            "library-card-violation/**",
     };
 
     public static final String[] PUBLIC_PUT = {
@@ -92,6 +94,8 @@ public class Endpoints {
             "/feedbacks/search/countBy/**",
             "/borrow-record/**",
             "/library-card/**",
+            "library-violation-types/**",
+            "library-card-violation/**",
             "/**",
     };
 }

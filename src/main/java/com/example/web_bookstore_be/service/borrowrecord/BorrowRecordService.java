@@ -8,4 +8,5 @@ public interface BorrowRecordService {
     public ResponseEntity<?> update(JsonNode jsonNode);
     public ResponseEntity<?> cancel(JsonNode jsonNode);
     public ResponseEntity<?> getByLibraryCard(String cardNumber);
+    public ResponseEntity<?> return1Book(JsonNode jsonNode);
 }
