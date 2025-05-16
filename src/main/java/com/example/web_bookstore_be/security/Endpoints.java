@@ -65,6 +65,7 @@ public class Endpoints {
             "/borrow-record/update-borrow-record",
             "/borrow-record/cancel-borrow-record",
             "/library-card/create",
+            "/library-card/sendRequestRenewCard"
     };
 
     public static final String[] PUBLIC_DELETE = {

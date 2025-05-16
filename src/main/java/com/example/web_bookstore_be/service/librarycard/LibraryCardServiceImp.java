@@ -52,6 +52,7 @@ public class LibraryCardServiceImp implements LibraryCardService {
             libraryCard.get().setIssuedDate(Date.valueOf(LocalDate.now()));
             libraryCard.get().setExpiryDate(Date.valueOf(LocalDate.now().plusDays(365)));
             libraryCard.get().setActivated(true);
+            libraryCard.get().setStatus("Đang hoạt động");
 
             libraryCardRepository.save(libraryCard.get());
         } catch (Exception e) {
@@ -64,7 +65,7 @@ public class LibraryCardServiceImp implements LibraryCardService {
     @Override
     public ResponseEntity<?> update(JsonNode jsonNode) {
         try {
-            int idLibraryCard = Integer.valueOf(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
+            int idLibraryCard = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
             Optional<LibraryCard> libraryCard = libraryCardRepository.findById(idLibraryCard);
 
             if(libraryCard.isEmpty()){
@@ -84,7 +85,7 @@ public class LibraryCardServiceImp implements LibraryCardService {
     @Override
     public ResponseEntity<?> delete(JsonNode jsonNode) {
         try {
-            int idLibraryCard = Integer.valueOf(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
+            int idLibraryCard = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
             Optional<LibraryCard> libraryCard = libraryCardRepository.findById(idLibraryCard);
 
             if(libraryCard.isEmpty()){
@@ -144,9 +145,27 @@ public class LibraryCardServiceImp implements LibraryCardService {
     }
 
     @Override
+    public ResponseEntity<?> sendRequestRenewCard(JsonNode jsonNode) {
+        try{
+            int idLibraryCard = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
+            Optional<LibraryCard> LibraryCardOptional = libraryCardRepository.findById(idLibraryCard);
+            if(LibraryCardOptional.isEmpty()){
+                return ResponseEntity.notFound().build();
+            }
+            LibraryCard libraryCard = LibraryCardOptional.get();
+            libraryCard.setStatus("Yêu cầu gia hạn thẻ thư viện");
+            libraryCardRepository.save(libraryCard);
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Gửi yêu cầu gia hạn thẻ thư viện không thành công");
+        }
+        return ResponseEntity.ok().body("Gửi yêu cầu gia hạn thẻ thành công");
+    }
+
+    @Override
     public ResponseEntity<?> renewCard(JsonNode jsonNode) {
         try {
-            int idLibraryCard = Integer.valueOf(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
+            int idLibraryCard = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
             Optional<LibraryCard> libraryCardOptional = libraryCardRepository.findById(idLibraryCard);
 
             if (libraryCardOptional.isEmpty()) {
@@ -158,7 +177,7 @@ public class LibraryCardServiceImp implements LibraryCardService {
 
             // Check if renewal period is provided in the request
             if (jsonNode.has("renewalPeriodDays")) {
-                renewalPeriodDays = Integer.valueOf(formatStringByJson(String.valueOf(jsonNode.get("renewalPeriodDays"))));
+                renewalPeriodDays = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("renewalPeriodDays"))));
             }
 
             // Calculate new expiry date - either from current date or from existing expiry date if not expired
@@ -176,6 +195,7 @@ public class LibraryCardServiceImp implements LibraryCardService {
 
             libraryCard.setExpiryDate(Date.valueOf(newExpiryDate));
             libraryCard.setActivated(true);
+            libraryCard.setStatus("Gia hạn thành công");
             libraryCardRepository.save(libraryCard);
 
             Map<String, Object> response = new HashMap<>();

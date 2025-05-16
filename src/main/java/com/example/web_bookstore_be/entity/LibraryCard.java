@@ -28,6 +28,9 @@ public class LibraryCard {
   @Column(name = "expiryDate")
   private Date expiryDate;
 
+  @Column(name = "status")
+  private String status;
+
   @OneToOne(mappedBy = "libraryCard")
   private User user;
 

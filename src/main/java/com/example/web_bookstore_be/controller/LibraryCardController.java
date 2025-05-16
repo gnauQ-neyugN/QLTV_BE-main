@@ -57,6 +57,16 @@ public class LibraryCardController {
         }
     }
 
+    @PutMapping("/sendRequestRenewCard")
+    public ResponseEntity<?> sendRequestRenewCard(@RequestBody JsonNode jsonData) {
+        try {
+            return libraryCardService.sendRequestRenewCard(jsonData);
+        }catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PutMapping("/renew")
     public ResponseEntity<?> renewCard(@RequestBody JsonNode jsonData) {
         try {

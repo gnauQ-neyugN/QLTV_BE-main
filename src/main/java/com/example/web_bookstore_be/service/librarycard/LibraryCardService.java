@@ -9,7 +9,7 @@ public interface LibraryCardService {
     public ResponseEntity<?> update(JsonNode jsonNode);
     public ResponseEntity<?> delete(JsonNode jsonNode);
     ResponseEntity<?> getByUserId(int userId);
-
+    ResponseEntity<?> sendRequestRenewCard(JsonNode jsonNode);
     ResponseEntity<?> renewCard(JsonNode jsonNode);
     ResponseEntity<?> getCardStatus(String cardNumber);
     ResponseEntity<?> getAllCards(Pageable pageable, String status);
