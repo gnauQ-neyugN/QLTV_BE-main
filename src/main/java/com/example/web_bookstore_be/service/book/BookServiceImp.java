@@ -1,9 +1,11 @@
 package com.example.web_bookstore_be.service.book;
 
 import com.example.web_bookstore_be.dao.BookRepository;
+import com.example.web_bookstore_be.dao.DdcCategoryRepository;
 import com.example.web_bookstore_be.dao.GenreRepository;
 import com.example.web_bookstore_be.dao.ImageRepository;
 import com.example.web_bookstore_be.entity.Book;
+import com.example.web_bookstore_be.entity.DdcCategory;
 import com.example.web_bookstore_be.entity.Genre;
 import com.example.web_bookstore_be.entity.Image;
 import com.example.web_bookstore_be.service.UploadImage.UploadImageService;
@@ -30,6 +32,8 @@ public class BookServiceImp implements BookService {
     @Autowired
     private GenreRepository genreRepository;
     @Autowired
+    private DdcCategoryRepository ddcCategoryRepository;
+    @Autowired
     private ImageRepository imageRepository;
     @Autowired
     private UploadImageService uploadImageService;
@@ -45,14 +49,28 @@ public class BookServiceImp implements BookService {
             Book book = objectMapper.treeToValue(bookJson, Book.class);
 
             // Lưu thể loại của sách
-            List<Integer> idGenreList = objectMapper.readValue(bookJson.get("idGenres").traverse(), new TypeReference<List<Integer>>() {
-            });
+            List<Integer> idGenreList = objectMapper.readValue(bookJson.get("idGenres").traverse(), new TypeReference<List<Integer>>() {});
             List<Genre> genreList = new ArrayList<>();
             for (int idGenre : idGenreList) {
                 Optional<Genre> genre = genreRepository.findById(idGenre);
                 genreList.add(genre.get());
             }
             book.setListGenres(genreList);
+            // Lưu mã ddc
+            List<Integer> idDdcCategory = objectMapper.readValue(bookJson.get("idDdcCategory").traverse(), new TypeReference<List<Integer>>() {});
+            List<DdcCategory> dcdCategoryList = new ArrayList<>();
+            for (int idDcdCategory : idDdcCategory) {
+                Optional<DdcCategory> ddcCategory = ddcCategoryRepository.findById(idDcdCategory);
+                dcdCategoryList.add(ddcCategory.get());
+            }
+            book.setListDdcCategory(dcdCategoryList);
+            // Lưu mã isbn
+            String isbn = bookJson.get("isbn").asText();
+            Optional<Book> existingBook = bookRepository.findByIsbn(isbn);
+            if (existingBook.isPresent()) {
+                return ResponseEntity.badRequest().body("ISBN đã tồn tại!");
+            }
+            book.setIsbn(isbn);
 
             // Lưu trước để lấy id sách đặt tên cho ảnh
             Book newBook = bookRepository.save(book);
@@ -115,6 +133,15 @@ public class BookServiceImp implements BookService {
                 genreList.add(genre.get());
             }
             book.setListGenres(genreList);
+
+            List<Integer> idDdcCategory = objectMapper.readValue(bookJson.get("idDdcCategory").traverse(), new TypeReference<List<Integer>>() {});
+            List<DdcCategory> dcdCategoryList = new ArrayList<>();
+            for (int idDcdCategory : idDdcCategory) {
+                Optional<DdcCategory> ddcCategory = ddcCategoryRepository.findById(idDcdCategory);
+                dcdCategoryList.add(ddcCategory.get());
+            }
+            book.setListDdcCategory(dcdCategoryList);
+
 
             // Kiểm tra xem thumbnail có thay đổi không
             String dataThumbnail = formatStringByJson(String.valueOf((bookJson.get("thumbnail"))));

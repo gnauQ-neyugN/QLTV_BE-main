@@ -29,8 +29,10 @@ public class Book {
     private double listPrice; // Giá niêm yết
     @Column(name = "sell_price")
     private double sellPrice; // Giá bán
-    @Column(name = "quantity")
-    private int quantity; // Số lượng
+    @Column(name = "quantity_for_sold")
+    private int quantityForSold; // Số lượng để bán
+    @Column(name = "quantity_for_borrow")
+    private int quantityForBorrow; // số lượng để mượn
     @Column(name = "avg_rating")
     private double avgRating; // Trung bình xếp hạng
     @Column(name = "sold_quantity")
@@ -39,6 +41,12 @@ public class Book {
     private int borrowQuantity = 0;
     @Column(name = "discount_percent")
     private int discountPercent; // Giảm giá bao nhiêu %
+    @Column(name = "isbn")
+    private String isbn;
+
+    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
+    @JoinTable(name = "book_ddc_category", joinColumns = @JoinColumn(name = "id_book"), inverseJoinColumns = @JoinColumn(name = "id_ddc_category"))
+    private List<DdcCategory> listDdcCategory; // Danh sách thể loại
 
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     @JoinTable(name = "book_genre", joinColumns = @JoinColumn(name = "id_book"), inverseJoinColumns = @JoinColumn(name = "id_genre"))

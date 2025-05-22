@@ -73,7 +73,7 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                     return ResponseEntity.badRequest().body(new Notification("Sách không tồn tại"));
                 }
 
-                if (book.get().getQuantity() < quantity) {
+                if (book.get().getQuantityForBorrow() < quantity) {
                     return ResponseEntity.badRequest().body(new Notification("Số lượng sách không đủ"));
                 }
                 BorrowRecord newBorrowRecord = borrowRecordRepository.save(borrowRecordData);
@@ -125,8 +125,7 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                         if (borrowRecordDetail.isReturned()) {
                             Book bookBorrowRecordDetail = borrowRecordDetail.getBook();
 
-                            bookBorrowRecordDetail.setBorrowQuantity(bookBorrowRecordDetail.getBorrowQuantity() - borrowRecordDetail.getQuantity());
-                            bookBorrowRecordDetail.setQuantity(bookBorrowRecordDetail.getQuantity() + borrowRecordDetail.getQuantity());
+                            bookBorrowRecordDetail.setQuantityForBorrow(bookBorrowRecordDetail.getQuantityForBorrow() + borrowRecordDetail.getQuantity());
                             bookRepository.save(bookBorrowRecordDetail);
 
                             borrowRecordDetail.setReturned(true);
@@ -142,7 +141,7 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                     if (!borrowRecordDetail.isReturned()) {
                         Book bookBorrowRecordDetail = borrowRecordDetail.getBook();
                         bookBorrowRecordDetail.setBorrowQuantity(bookBorrowRecordDetail.getBorrowQuantity() + borrowRecordDetail.getQuantity());
-                        bookBorrowRecordDetail.setQuantity(bookBorrowRecordDetail.getQuantity() - borrowRecordDetail.getQuantity());
+                        bookBorrowRecordDetail.setQuantityForSold(bookBorrowRecordDetail.getQuantityForSold() - borrowRecordDetail.getQuantity());
                         bookRepository.save(bookBorrowRecordDetail);
 
                         borrowRecordDetail.setReturnDate(Date.valueOf(LocalDate.now()));
@@ -183,7 +182,7 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
             for (BorrowRecordDetail borrowRecordDetail : borrowRecordDetailList) {
                 Book book = borrowRecordDetail.getBook();
                 book.setBorrowQuantity(book.getBorrowQuantity() - borrowRecordDetail.getQuantity());
-                book.setQuantity(book.getQuantity() + borrowRecordDetail.getQuantity());
+                book.setBorrowQuantity(book.getBorrowQuantity() + borrowRecordDetail.getQuantity());
                 bookRepository.save(book);
             }
 

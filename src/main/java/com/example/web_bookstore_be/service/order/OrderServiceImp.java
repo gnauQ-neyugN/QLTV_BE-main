@@ -67,7 +67,7 @@ public class OrderServiceImp implements OrderService{
                     return ResponseEntity.badRequest().body("Không tìm thấy sách với ID: " + bookResponse.getIdBook());
                 }
                 Book book = bookOptional.get();
-                book.setQuantity(book.getQuantity() - quantity);
+                book.setQuantityForSold(book.getQuantityForSold() - quantity);
                 book.setSoldQuantity(book.getSoldQuantity() + quantity);
 
                 OrderDetail orderDetail = new OrderDetail();
@@ -107,7 +107,7 @@ public class OrderServiceImp implements OrderService{
                 for (OrderDetail orderDetail : orderDetailList) {
                     Book bookOrderDetail = orderDetail.getBook();
                     bookOrderDetail.setSoldQuantity(bookOrderDetail.getSoldQuantity() - orderDetail.getQuantity());
-                    bookOrderDetail.setQuantity(bookOrderDetail.getQuantity() + orderDetail.getQuantity());
+                    bookOrderDetail.setQuantityForSold(bookOrderDetail.getQuantityForSold() + orderDetail.getQuantity());
                     bookRepository.save(bookOrderDetail);
                 }
             }
@@ -140,7 +140,7 @@ public class OrderServiceImp implements OrderService{
             for (OrderDetail orderDetail : orderDetailList) {
                 Book bookOrderDetail = orderDetail.getBook();
                 bookOrderDetail.setSoldQuantity(bookOrderDetail.getSoldQuantity() - orderDetail.getQuantity());
-                bookOrderDetail.setQuantity(bookOrderDetail.getQuantity() + orderDetail.getQuantity());
+                bookOrderDetail.setQuantityForSold(bookOrderDetail.getQuantityForSold() + orderDetail.getQuantity());
                 bookRepository.save(bookOrderDetail);
             }
 
