@@ -38,7 +38,7 @@ public class Book {
     @Column(name = "sold_quantity")
     private int soldQuantity; // Đã bán bao nhiêu
     @Column(name = "borrow_quantity")
-    private int borrowQuantity = 0;
+    private int borrowQuantity;
     @Column(name = "discount_percent")
     private int discountPercent; // Giảm giá bao nhiêu %
     @Column(name = "isbn")
