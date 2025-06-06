@@ -101,71 +101,45 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
         try {
             int idBorrowRecord = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idBorrowRecord"))));
             String status = formatStringByJson(String.valueOf(jsonNode.get("status")));
-            String violationTypeName = formatStringByJson(String.valueOf(jsonNode.get("code")));
+
             Optional<BorrowRecord> borrowRecordOpt = borrowRecordRepository.findById(idBorrowRecord);
-            Optional<LibraryViolationType> violationType = libraryViolationTypeRepository.findByCode(violationTypeName);
             if (borrowRecordOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body(new Notification("Không tìm thấy phiếu mượn"));
             }
 
             BorrowRecord borrowRecord = borrowRecordOpt.get();
             borrowRecord.setStatus(status);
-            LibraryCard libraryCard = borrowRecord.getLibraryCard();
+
             List<BorrowRecordDetail> borrowRecordDetailList = borrowRecordDetailRepository.findBorrowRecordDetailByBorrowRecord(borrowRecord);
-            // If the record is marked as 'Đã trả'
+
+            // Nếu cập nhật sang trạng thái "Đã trả"
             if (status.equals("Đã trả")) {
-                if(violationType.isPresent()){
-                    LibraryViolationType libraryViolationType = violationType.get();
-                    libraryCard.getViolationTypes().add(libraryViolationType);
-                    libraryCardRepository.save(libraryCard);
-                }
                 borrowRecord.setReturnDate(Date.valueOf(LocalDate.now()));
+                double fineAmount = 0;
 
-                for (BorrowRecordDetail borrowRecordDetail : borrowRecordDetailList) {
-                    BookItem bookItem = borrowRecordDetail.getBookItem();
-                    Book book = bookItem.getBook();
-                    if (borrowRecordDetail.isReturned()) {
-                        if(violationTypeName.equals("Làm mất sách")){
-                            borrowRecord.setFineAmount(book.getListPrice()*bookItem.getCondition()/100);
-                            bookItem.setStatus("LOST_BOOK");
-                            book.setBorrowQuantity(book.getBorrowQuantity()-1);
-                            borrowRecordDetail.setViolationType(violationType.get());
+                for (BorrowRecordDetail detail : borrowRecordDetailList) {
+                    if (detail.isReturned()) {
+                        BookItem bookItem = detail.getBookItem();
+                        LibraryViolationType violationType = detail.getViolationType();
 
-                            bookItemRepository.save(bookItem);
-                            bookRepository.save(book);
-                        } else if(violationTypeName.equals("Trả muộn")){
-                            borrowRecord.setFineAmount(violationType.get().getFine());
-                            bookItem.setStatus("AVAILABLE");
-                            bookItem.setCondition(bookItem.getCondition() - 1);
-                            bookItemRepository.save(bookItem);
-
-                            book.setQuantityForBorrow(book.getQuantityForBorrow() + 1);
-                            book.setBorrowQuantity(book.getBorrowQuantity() - 1);
-                            bookRepository.save(book);
-
-                            borrowRecordDetail.setViolationType(violationType.get());
-                        }else {
-                            bookItem.setStatus("AVAILABLE");
-                            bookItem.setCondition(bookItem.getCondition() - 1);
-                            bookItemRepository.save(bookItem);
-
-                            book.setQuantityForBorrow(book.getQuantityForBorrow() + 1);
-                            book.setBorrowQuantity(book.getBorrowQuantity() - 1);
-                            bookRepository.save(book);
+                        if (violationType != null) {
+                            if (violationType.getCode().equals("Trả muộn")) {
+                                fineAmount += violationType.getFine();
+                            } else if (violationType.getCode().equals("Làm mất sách")) {
+                                fineAmount += bookItem.getCondition() * bookItem.getBook().getListPrice() / 100.0;
+                            }
                         }
-
-
-                        borrowRecordDetail.setReturned(true);
-                        borrowRecordDetail.setReturnDate(Date.valueOf(LocalDate.now()));
-                        borrowRecordDetailRepository.save(borrowRecordDetail);
                     }
                 }
+
+                borrowRecord.setFineAmount(fineAmount);
             }
 
+            // Nếu cập nhật sang trạng thái "Đang mượn"
             if (status.equals("Đang mượn")) {
-                for (BorrowRecordDetail borrowRecordDetail : borrowRecordDetailList) {
-                    if (!borrowRecordDetail.isReturned()) {
-                        BookItem bookItem = borrowRecordDetail.getBookItem();
+                for (BorrowRecordDetail detail : borrowRecordDetailList) {
+                    if (!detail.isReturned()) {
+                        BookItem bookItem = detail.getBookItem();
                         Book book = bookItem.getBook();
 
                         bookItem.setStatus("BORROWED");
@@ -178,13 +152,15 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                 }
             }
 
-            borrowRecordRepository.save(borrowRecord);  
+            borrowRecordRepository.save(borrowRecord);
             return ResponseEntity.ok(new Notification("Cập nhật phiếu mượn thành công"));
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new Notification("Lỗi khi cập nhật phiếu mượn: " + e.getMessage()));
         }
     }
+
 
     @Override
     @Transactional
@@ -228,33 +204,47 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
     public ResponseEntity<?> return1Book(JsonNode jsonNode) {
         try {
             int id = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("id"))));
-            Optional<BorrowRecordDetail> borrowRecordDetail = borrowRecordDetailRepository.findById(id);
-
-            if (borrowRecordDetail.isEmpty()) {
-                return ResponseEntity.badRequest().body("Không tìm thấy chi tiết phiếu mượn");
-            }
-
+            String violationCode = formatStringByJson(String.valueOf(jsonNode.get("code")));
             String returnDateStr = jsonNode.get("returnDate").asText(null);
             String notes = jsonNode.get("notes").asText(null);
 
-            BorrowRecordDetail detail = borrowRecordDetail.get();
-            detail.setReturned(true);
-            detail.setNotes(notes);
+            Optional<BorrowRecordDetail> detailOpt = borrowRecordDetailRepository.findById(id);
+            Optional<LibraryViolationType> violationTypeOpt = libraryViolationTypeRepository.findByCode(violationCode);
 
-            if (detail.isReturned() && returnDateStr != null) {
-                LocalDate returnDate = LocalDate.parse(returnDateStr);
-                detail.setReturnDate(Date.valueOf(returnDate));
-            } else {
-                detail.setReturnDate(null);
+            if (detailOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body("Không tìm thấy chi tiết phiếu mượn");
             }
 
+            BorrowRecordDetail detail = detailOpt.get();
+
+            detail.setViolationType(violationTypeOpt.orElse(null));
+            detail.setReturned(true);
+            detail.setNotes(notes);
+            BookItem bookItem = detail.getBookItem();
+
+            if (violationCode.equals("Làm mất sách")) {
+                bookItem.setStatus("Đã mất");
+            } else {
+                bookItem.setStatus("Có sẵn");
+                bookItem.setCondition(bookItem.getCondition() - 1);
+            }
+            Book book = bookItem.getBook();
+            book.setBorrowQuantity(book.getBorrowQuantity() - 1);
+            book.setQuantityForBorrow(book.getQuantityForBorrow() + 1);
+            if (returnDateStr != null) {
+                detail.setReturnDate(Date.valueOf(LocalDate.parse(returnDateStr)));
+            } else {
+                detail.setReturnDate(Date.valueOf(LocalDate.now()));
+            }
+            bookItemRepository.save(bookItem);
             borrowRecordDetailRepository.save(detail);
             return ResponseEntity.ok().body("Trả sách thành công");
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().body("Không thể trả sách");
+            return ResponseEntity.badRequest().body("Không thể trả sách: " + e.getMessage());
         }
     }
+
 
 
     private String formatStringByJson(String json) {
