@@ -84,7 +84,7 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                 detail.setBorrowRecord(newBorrowRecord);
                 detail.setBookItem(bookItem);
                 detail.setReturned(false);
-                detail.setQuantity(1); // Hoặc bạn có thể bỏ field này
+                detail.setQuantity(1);
                 borrowRecordDetailRepository.save(detail);
             }
 
@@ -227,10 +227,12 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
             } else {
                 bookItem.setStatus("Có sẵn");
                 bookItem.setCondition(bookItem.getCondition() - 1);
+                Book book = bookItem.getBook();
+                book.setBorrowQuantity(book.getBorrowQuantity() - 1);
+                book.setQuantityForBorrow(book.getQuantityForBorrow() + 1);
+                bookRepository.save(book);
             }
-            Book book = bookItem.getBook();
-            book.setBorrowQuantity(book.getBorrowQuantity() - 1);
-            book.setQuantityForBorrow(book.getQuantityForBorrow() + 1);
+
             if (returnDateStr != null) {
                 detail.setReturnDate(Date.valueOf(LocalDate.parse(returnDateStr)));
             } else {
