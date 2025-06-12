@@ -36,7 +36,9 @@ public class Endpoints {
             "/borrow-record-detail/**",
             "/library-violation-types/**",
             "/ddc-categories/**",
-            "/book-items/**"
+            "/book-items/**",
+            "/statistics/top-borrowed-books?limit=3",
+            "/book/book-items/available/1"
     };
 
     public static final String[] PUBLIC_POST = {
@@ -103,6 +105,9 @@ public class Endpoints {
             "library-card-violation/**",
             "/ddc-categories/**",
             "/book-items/**",
+            "/statistics/**",
+            "/user/toggle-status/**",
+            "/user/update-roles/**",
             "/**",
     };
 }

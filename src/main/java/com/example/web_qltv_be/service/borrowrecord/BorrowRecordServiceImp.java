@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,16 +45,11 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
         try {
             BorrowRecord borrowRecordData = objectMapper.treeToValue(jsonNode, BorrowRecord.class);
             borrowRecordData.setBorrowDate(Date.valueOf(LocalDate.now()));
-
-            // Default due date is 14 days from now
-            LocalDate dueDate = LocalDate.now().plusDays(60);
-            borrowRecordData.setDueDate(Date.valueOf(dueDate));
-
+            borrowRecordData.setDueDate(Date.valueOf(LocalDate.now().plusDays(60)));
             borrowRecordData.setStatus("Đang xử lý");
 
             int idLibraryCard = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
             Optional<LibraryCard> libraryCard = libraryCardRepository.findById(idLibraryCard);
-            Optional<User> user = userRepository.findUsersByLibraryCard_IdLibraryCard(idLibraryCard);
 
             if (libraryCard.isEmpty()) {
                 return ResponseEntity.badRequest().body(new Notification("Thẻ thư viện không tồn tại"));
@@ -64,6 +60,10 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
             }
 
             borrowRecordData.setLibraryCard(libraryCard.get());
+            borrowRecordData.setRecordId(generateRecordId());
+            // ✅ Save only once
+            BorrowRecord savedBorrowRecord = borrowRecordRepository.save(borrowRecordData);
+
             JsonNode jsonData = jsonNode.get("bookItem");
             for (JsonNode itemNode : jsonData) {
                 int idBookItem = itemNode.get("idBookItem").asInt();
@@ -75,17 +75,19 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
 
                 BookItem bookItem = bookItemOptional.get();
 
-                if (!bookItem.getStatus().equals("AVAILABLE")) {
+                if (!bookItem.getStatus().equals("Có sẵn")) {
                     return ResponseEntity.badRequest().body(new Notification("Bản sao sách '" + bookItem.getBarcode() + "' không sẵn sàng để mượn"));
                 }
 
-                BorrowRecord newBorrowRecord = borrowRecordRepository.save(borrowRecordData);
+                // ✅ Add to detail
                 BorrowRecordDetail detail = new BorrowRecordDetail();
-                detail.setBorrowRecord(newBorrowRecord);
+                detail.setBorrowRecord(savedBorrowRecord);
                 detail.setBookItem(bookItem);
                 detail.setReturned(false);
                 detail.setQuantity(1);
+
                 borrowRecordDetailRepository.save(detail);
+
             }
 
             return ResponseEntity.ok(new Notification("Mượn sách thành công"));
@@ -247,6 +249,24 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
         }
     }
 
+    private String generateRecordId() {
+        String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        int retry = 0;
+        String recordId;
+
+        while (true) {
+            String serial = String.format("%04d", borrowRecordRepository.countByBorrowDate(Date.valueOf(LocalDate.now())) + retry + 1);
+            recordId = "BR-" + datePart + "-" + serial;
+
+            // Kiểm tra xem recordId này đã tồn tại chưa
+            if (!borrowRecordRepository.existsByRecordId(recordId)) {
+                break;
+            }
+            retry++;
+        }
+
+        return recordId;
+    }
 
 
     private String formatStringByJson(String json) {

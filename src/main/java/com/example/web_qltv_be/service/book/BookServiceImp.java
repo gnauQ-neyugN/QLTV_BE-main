@@ -1,9 +1,6 @@
 package com.example.web_qltv_be.service.book;
 
-import com.example.web_qltv_be.dao.BookRepository;
-import com.example.web_qltv_be.dao.DdcCategoryRepository;
-import com.example.web_qltv_be.dao.GenreRepository;
-import com.example.web_qltv_be.dao.ImageRepository;
+import com.example.web_qltv_be.dao.*;
 import com.example.web_qltv_be.entity.*;
 import com.example.web_qltv_be.service.UploadImage.UploadImageService;
 import com.example.web_qltv_be.service.util.Base64ToMultipartFileConverter;
@@ -34,6 +31,9 @@ public class BookServiceImp implements BookService {
     private ImageRepository imageRepository;
     @Autowired
     private UploadImageService uploadImageService;
+    @Autowired
+    private BookItemRepository bookItemRepository;
+
 
     public BookServiceImp(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -77,7 +77,7 @@ public class BookServiceImp implements BookService {
             for (int i = 0; i < newBook.getQuantityForBorrow(); i++) {
                 BookItem bookItem = new BookItem();
                 bookItem.setBook(newBook);
-                bookItem.setStatus("AVAILABLE");
+                bookItem.setStatus("Có sẵn");
                 bookItem.setLocation("Chưa cập nhật"); // Hoặc gán giá trị mặc định nếu có
                 bookItem.setCondition(100); // Mặc định là mới 100%, bạn có thể điều chỉnh
                 bookItem.setBarcode("BOOK_" + newBook.getIdBook() + "_" + (i + 1)); // Tạo barcode duy nhất
@@ -170,6 +170,22 @@ public class BookServiceImp implements BookService {
             }
 
             Book newBook = bookRepository.save(book);
+            int currentBookItemCount = bookItemRepository.countByBook(newBook);
+            int updatedQuantity = newBook.getQuantityForBorrow();
+
+            if (updatedQuantity > currentBookItemCount) {
+                List<BookItem> newItems = new ArrayList<>();
+                for (int i = currentBookItemCount + 1; i <= updatedQuantity; i++) {
+                    BookItem bookItem = new BookItem();
+                    bookItem.setBook(newBook);
+                    bookItem.setStatus("Có sẵn");
+                    bookItem.setLocation("Chưa cập nhật");
+                    bookItem.setCondition(100);
+                    bookItem.setBarcode("BOOK_" + newBook.getIdBook() + "_" + i);
+                    newItems.add(bookItem);
+                }
+                bookItemRepository.saveAll(newItems);
+            }
 
             // Kiểm tra ảnh có liên quan
             List<String> arrDataRelatedImg = objectMapper.readValue(bookJson.get("relatedImg").traverse(), new TypeReference<List<String>>() {});

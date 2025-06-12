@@ -127,4 +127,26 @@ public class UserController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    // Thêm endpoint để kích hoạt/vô hiệu hóa tài khoản
+    @PutMapping(path = "/toggle-status/{idUser}")
+    public ResponseEntity<?> toggleUserStatus(@PathVariable int idUser, @RequestBody JsonNode jsonData) {
+        try{
+            return userServiceImp.toggleUserStatus(idUser, jsonData);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Thêm endpoint để cập nhật phân quyền
+    @PutMapping(path = "/update-roles")
+    public ResponseEntity<?> updateUserRoles(@RequestBody JsonNode jsonData) {
+        try{
+            return userServiceImp.updateUserRoles(jsonData);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
 }

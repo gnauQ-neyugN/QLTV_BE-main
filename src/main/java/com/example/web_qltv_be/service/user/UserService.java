@@ -12,4 +12,8 @@ public interface UserService {
     public ResponseEntity<?> changeAvatar(JsonNode userJson);
     public ResponseEntity<?> updateProfile(JsonNode userJson);
     public ResponseEntity<?> forgotPassword(JsonNode jsonNode);
+
+    // Thêm các method mới
+    public ResponseEntity<?> toggleUserStatus(int idUser, JsonNode jsonNode);
+    public ResponseEntity<?> updateUserRoles(JsonNode jsonNode);
 }

@@ -33,6 +33,9 @@ public class BorrowRecord {
     @Column(name = "fine_amount")
     private double fineAmount = 0;
 
+    @Column(name = "record_id")
+    private String recordId;
+
     @OneToMany(mappedBy = "borrowRecord", cascade = CascadeType.ALL)
     private List<BorrowRecordDetail> borrowRecordDetails;
 
