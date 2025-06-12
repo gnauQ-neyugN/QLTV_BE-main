@@ -111,21 +111,25 @@ public class UserServiceImp implements UserService {
             java.sql.Date dateOfBirth = new java.sql.Date(Date.from(instant).getTime());
             user.setDateOfBirth(dateOfBirth);
 
-            // Tạo mới thẻ thư viện
-            LibraryCard libraryCard = new LibraryCard();
-            libraryCard.setActivated(false);
-            libraryCard = libraryCardRepository.save(libraryCard);
-            user.setLibraryCard(libraryCard);
+            // Nếu là thêm mới, tạo thẻ thư viện
+            if (option.equals("add")) {
+                LibraryCard libraryCard = new LibraryCard();
+                libraryCard.setActivated(false);
+                libraryCard = libraryCardRepository.save(libraryCard);
+                user.setLibraryCard(libraryCard);
+            }
 
-            // Set role cho user
-            int idRoleRequest = Integer.parseInt(String.valueOf(userJson.get("role")));
-            Optional<Role> role = roleRepository.findById(idRoleRequest);
-            List<Role> roles = new ArrayList<>();
-            roles.add(role.get());
-            user.setListRoles(roles);
+            // Set role cho user (chỉ khi thêm mới)
+            if (option.equals("add")) {
+                int idRoleRequest = Integer.parseInt(String.valueOf(userJson.get("role")));
+                Optional<Role> role = roleRepository.findById(idRoleRequest);
+                List<Role> roles = new ArrayList<>();
+                roles.add(role.get());
+                user.setListRoles(roles);
+            }
 
             // Mã hoá mật khẩu
-            if (!(user.getPassword() == null)) { // Trường hợp là thêm hoặc thay đổi password
+            if (!(user.getPassword() == null) && !user.getPassword().isEmpty()) {
                 String encodePassword = passwordEncoder.encode(user.getPassword());
                 user.setPassword(encodePassword);
             } else {
@@ -140,6 +144,11 @@ public class UserServiceImp implements UserService {
                 MultipartFile avatarFile = Base64ToMultipartFileConverter.convert(avatar);
                 String avatarURL = uploadImageService.uploadImage(avatarFile, "User_" + user.getIdUser());
                 user.setAvatar(avatarURL);
+            }
+
+            // Set enabled status (mặc định là true cho user mới)
+            if (option.equals("add")) {
+                user.setEnabled(true);
             }
 
             userRepository.save(user);
@@ -269,12 +278,76 @@ public class UserServiceImp implements UserService {
         return ResponseEntity.ok().build();
     }
 
+    // Thêm method mới để kích hoạt/vô hiệu hóa tài khoản
+    @Override
+    public ResponseEntity<?> toggleUserStatus(int idUser, JsonNode jsonNode) {
+        try {
+            Optional<User> userOptional = userRepository.findById(idUser);
+
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(new Notification("Không tìm thấy người dùng"));
+            }
+
+            User user = userOptional.get();
+            boolean newStatus = Boolean.parseBoolean(formatStringByJson(String.valueOf(jsonNode.get("enabled"))));
+
+            user.setEnabled(newStatus);
+            userRepository.save(user);
+
+            String message = newStatus ? "Kích hoạt tài khoản thành công" : "Vô hiệu hóa tài khoản thành công";
+            return ResponseEntity.ok(new Notification(message));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new Notification("Lỗi khi cập nhật trạng thái tài khoản"));
+        }
+    }
+
+    // Thêm method mới để cập nhật phân quyền
+    @Override
+    @Transactional
+    public ResponseEntity<?> updateUserRoles(JsonNode jsonNode) {
+        try {
+            int idUser = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idUser"))));
+            JsonNode rolesNode = jsonNode.get("roles");
+
+            Optional<User> userOptional = userRepository.findById(idUser);
+
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(new Notification("Không tìm thấy người dùng"));
+            }
+
+            User user = userOptional.get();
+            List<Role> newRoles = new ArrayList<>();
+
+            // Chuyển đổi danh sách role ID thành danh sách Role entity
+            if (rolesNode.isArray()) {
+                for (JsonNode roleIdNode : rolesNode) {
+                    int roleId = roleIdNode.asInt();
+                    Optional<Role> roleOptional = roleRepository.findById(roleId);
+                    if (roleOptional.isPresent()) {
+                        newRoles.add(roleOptional.get());
+                    }
+                }
+            }
+
+            // Cập nhật danh sách role cho user
+            user.setListRoles(newRoles);
+            userRepository.save(user);
+
+            return ResponseEntity.ok(new Notification("Cập nhật phân quyền thành công"));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new Notification("Lỗi khi cập nhật phân quyền"));
+        }
+    }
+
     private String generateActivationCode() {
         return UUID.randomUUID().toString();
     }
 
     private void sendEmailActivation(String email, String activationCode) {
-//        String endpointFE = "https://d451-203-205-27-198.ngrok-free.app";
         String endpointFE = "http://localhost:3000";
         String url = endpointFE + "/active/" + email + "/" + activationCode;
         String subject = "Kích hoạt tài khoản";
@@ -318,6 +391,7 @@ public class UserServiceImp implements UserService {
         }
         return ResponseEntity.ok("Kích hoạt thành công");
     }
+
     private String formatStringByJson(String json) {
         return json.replaceAll("\"", "");
     }
