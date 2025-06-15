@@ -5,6 +5,10 @@ import com.example.web_qltv_be.entity.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,8 +82,8 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                 if (!bookItem.getStatus().equals("Có sẵn")) {
                     return ResponseEntity.badRequest().body(new Notification("Bản sao sách '" + bookItem.getBarcode() + "' không sẵn sàng để mượn"));
                 }
-
-                // ✅ Add to detail
+                bookItem.setStatus("Đặt mượn");
+                bookItemRepository.save(bookItem);
                 BorrowRecordDetail detail = new BorrowRecordDetail();
                 detail.setBorrowRecord(savedBorrowRecord);
                 detail.setBookItem(bookItem);
@@ -194,13 +198,18 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
     @Override
     public ResponseEntity<?> getByLibraryCard(String cardNumber) {
         try {
-            List<BorrowRecord> borrowRecords = borrowRecordRepository.findBorrowRecordsByLibraryCard_CardNumber(cardNumber);
-            return ResponseEntity.ok(borrowRecords);
+            Pageable pageable = PageRequest.of(0, 100, Sort.by(Sort.Direction.DESC, "id"));
+            Page<BorrowRecord> borrowRecords = borrowRecordRepository
+                    .findBorrowRecordsByLibraryCard_CardNumber(cardNumber, pageable);
+
+            return ResponseEntity.ok(borrowRecords.getContent());
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(new Notification("Lỗi khi tìm phiếu mượn: " + e.getMessage()));
         }
     }
+
+
 
     @Override
     public ResponseEntity<?> return1Book(JsonNode jsonNode) {
