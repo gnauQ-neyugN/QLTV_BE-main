@@ -37,6 +37,7 @@ public class Endpoints {
             "/library-violation-types/**",
             "/ddc-categories/**",
             "/book-items/**",
+            "/borrow-record-details/**",
             "/statistics/top-borrowed-books?limit=3",
             "violation-types",
             "/book/book-items/available/1"
@@ -110,6 +111,9 @@ public class Endpoints {
             "/statistics/**",
             "/user/toggle-status/**",
             "/user/update-roles/**",
+            "/borrow-record-detail/**",
+            "/borrow-record-detail/search/**",
+            "/book-item/**",
             "/**",
     };
 }

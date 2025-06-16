@@ -148,7 +148,7 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                         BookItem bookItem = detail.getBookItem();
                         Book book = bookItem.getBook();
 
-                        bookItem.setStatus("BORROWED");
+                        bookItem.setStatus("Đang mượn");
                         bookItemRepository.save(bookItem);
 
                         book.setQuantityForBorrow(book.getQuantityForBorrow() - 1);

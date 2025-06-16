@@ -19,4 +19,5 @@ public interface BookItemRepository extends JpaRepository<BookItem, Integer> {
             @Param("status") String status,
             Pageable pageable
     );
+    BookItem findByBarcode(@Param("barcode") String barcode);
 }
