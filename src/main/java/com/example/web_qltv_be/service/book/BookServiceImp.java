@@ -44,7 +44,6 @@ public class BookServiceImp implements BookService {
     public ResponseEntity<?> save(JsonNode bookJson) {
         try {
             Book book = objectMapper.treeToValue(bookJson, Book.class);
-            ;
             // Lưu thể loại của sách
             List<Integer> idGenreList = objectMapper.readValue(bookJson.get("idGenres").traverse(), new TypeReference<List<Integer>>() {});
             List<Genre> genreList = new ArrayList<>();
@@ -63,12 +62,11 @@ public class BookServiceImp implements BookService {
             book.setListDdcCategory(dcdCategoryList);
             // Lưu mã isbn
             String isbn = bookJson.get("isbn").asText();
-            Optional<Book> existingBook = bookRepository.findByIsbn(isbn);
+            String cleanedIsbn = isbn.replaceAll("-", ""); // Bỏ dấu gạch ngang
+            Optional<Book> existingBook = bookRepository.findByIsbn(cleanedIsbn);
             if (existingBook.isPresent()) {
                 return ResponseEntity.badRequest().body("ISBN đã tồn tại!");
             }
-            book.setIsbn(isbn);
-
             // Lưu trước để lấy id sách đặt tên cho ảnh
             Book newBook = bookRepository.save(book);
 
@@ -78,13 +76,14 @@ public class BookServiceImp implements BookService {
                 BookItem bookItem = new BookItem();
                 bookItem.setBook(newBook);
                 bookItem.setStatus("Có sẵn");
-                bookItem.setLocation("Chưa cập nhật"); // Hoặc gán giá trị mặc định nếu có
-                bookItem.setCondition(100); // Mặc định là mới 100%, bạn có thể điều chỉnh
-                bookItem.setBarcode("BOOK_" + newBook.getIdBook() + "_" + (i + 1)); // Tạo barcode duy nhất
+                bookItem.setLocation("Chưa cập nhật");
+                bookItem.setCondition(100);
+                bookItem.setBarcode(cleanedIsbn + "-" + (i + 1));
 
                 bookItemList.add(bookItem);
             }
             newBook.setListBookItems(bookItemList);
+
 
             // Lưu thumbnail cho ảnh
             String dataThumbnail = formatStringByJson(String.valueOf((bookJson.get("thumbnail"))));
@@ -172,6 +171,7 @@ public class BookServiceImp implements BookService {
             Book newBook = bookRepository.save(book);
             int currentBookItemCount = bookItemRepository.countByBook(newBook);
             int updatedQuantity = newBook.getQuantityForBorrow();
+            String cleanedIsbn = book.getIsbn().replaceAll("-", "");
 
             if (updatedQuantity > currentBookItemCount) {
                 List<BookItem> newItems = new ArrayList<>();
@@ -181,7 +181,7 @@ public class BookServiceImp implements BookService {
                     bookItem.setStatus("Có sẵn");
                     bookItem.setLocation("Chưa cập nhật");
                     bookItem.setCondition(100);
-                    bookItem.setBarcode("BOOK_" + newBook.getIdBook() + "_" + i);
+                    bookItem.setBarcode(cleanedIsbn + "-" + i);
                     newItems.add(bookItem);
                 }
                 bookItemRepository.saveAll(newItems);

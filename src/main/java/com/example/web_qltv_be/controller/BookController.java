@@ -38,7 +38,7 @@ public class BookController {
             return bookService.update(jsonData);
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println("Lỗi r");
+            System.out.println("Lỗi");
             return ResponseEntity.badRequest().build();
         }
     }
