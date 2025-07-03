@@ -37,6 +37,7 @@ public class Endpoints {
             "/library-violation-types/**",
             "/ddc-categories/**",
             "/book-items/**",
+            "/book/book-items/**",
             "/borrow-record-details/**",
             "/statistics/top-borrowed-books?limit=3",
             "violation-types",

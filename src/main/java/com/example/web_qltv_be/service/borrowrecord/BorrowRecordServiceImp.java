@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,6 +85,8 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                 }
                 bookItem.setStatus("Đặt mượn");
                 bookItemRepository.save(bookItem);
+                Book book = bookItem.getBook();
+                book.setQuantityForBorrow(book.getQuantityForBorrow()-1);
                 BorrowRecordDetail detail = new BorrowRecordDetail();
                 detail.setBorrowRecord(savedBorrowRecord);
                 detail.setBookItem(bookItem);
@@ -103,6 +106,81 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
 
     @Override
     @Transactional
+    public ResponseEntity<?> create(JsonNode jsonNode) {
+        try {
+            BorrowRecord borrowRecordData = objectMapper.treeToValue(jsonNode, BorrowRecord.class);
+
+            // ✅ Lấy ngày mượn và hạn trả từ JSON nếu có
+            String borrowDateStr = jsonNode.get("borrowDate").asText(null);
+            String dueDateStr = jsonNode.get("dueDate").asText(null);
+
+            LocalDate borrowDate = (borrowDateStr != null) ? LocalDate.parse(borrowDateStr) : LocalDate.now();
+            LocalDate dueDate = (dueDateStr != null) ? LocalDate.parse(dueDateStr) : borrowDate.plusDays(60);
+
+            borrowRecordData.setBorrowDate(Date.valueOf(borrowDate));
+            borrowRecordData.setDueDate(Date.valueOf(dueDate));
+            borrowRecordData.setStatus("Đang mượn");
+
+            int idLibraryCard = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idLibraryCard"))));
+            Optional<LibraryCard> libraryCard = libraryCardRepository.findById(idLibraryCard);
+
+            if (libraryCard.isEmpty()) {
+                return ResponseEntity.badRequest().body(new Notification("Thẻ thư viện không tồn tại"));
+            }
+
+            if (!libraryCard.get().isActivated()) {
+                return ResponseEntity.badRequest().body(new Notification("Thẻ thư viện chưa được kích hoạt"));
+            }
+
+            borrowRecordData.setLibraryCard(libraryCard.get());
+            borrowRecordData.setRecordId(generateRecordId());
+
+            // ✅ Save borrow record
+            BorrowRecord savedBorrowRecord = borrowRecordRepository.save(borrowRecordData);
+
+            // ✅ Lặp qua bookItem
+            JsonNode jsonData = jsonNode.get("bookItem");
+            for (JsonNode itemNode : jsonData) {
+                int idBookItem = itemNode.get("idBookItem").asInt();
+                Optional<BookItem> bookItemOptional = bookItemRepository.findById(idBookItem);
+
+                if (bookItemOptional.isEmpty()) {
+                    return ResponseEntity.badRequest().body(new Notification("Không tìm thấy bản sao sách với ID: " + idBookItem));
+                }
+
+                BookItem bookItem = bookItemOptional.get();
+
+                if (!bookItem.getStatus().equals("Có sẵn")) {
+                    return ResponseEntity.badRequest().body(new Notification("Bản sao sách '" + bookItem.getBarcode() + "' không sẵn sàng để mượn"));
+                }
+
+                bookItem.setStatus("Đang mượn");
+
+                Book book = bookItem.getBook();
+                book.setBorrowQuantity(book.getBorrowQuantity() + 1);
+                book.setQuantityForBorrow(book.getQuantityForBorrow() - 1);
+                bookRepository.save(book);
+
+                bookItemRepository.save(bookItem);
+
+                BorrowRecordDetail detail = new BorrowRecordDetail();
+                detail.setBorrowRecord(savedBorrowRecord);
+                detail.setBookItem(bookItem);
+                detail.setReturned(false);
+                detail.setQuantity(1);
+                borrowRecordDetailRepository.save(detail);
+            }
+
+            return ResponseEntity.ok(new Notification("Mượn sách thành công"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new Notification("Lỗi khi mượn sách: " + e.getMessage()));
+        }
+    }
+
+
+    @Override
+    @Transactional
     public ResponseEntity<?> update(JsonNode jsonNode) {
         try {
             int idBorrowRecord = Integer.parseInt(formatStringByJson(String.valueOf(jsonNode.get("idBorrowRecord"))));
@@ -117,11 +195,13 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
             borrowRecord.setStatus(status);
 
             List<BorrowRecordDetail> borrowRecordDetailList = borrowRecordDetailRepository.findBorrowRecordDetailByBorrowRecord(borrowRecord);
-
+            List<LibraryViolationType> libraryViolationTypeList = new ArrayList<>();
+            LibraryCard libraryCard = borrowRecord.getLibraryCard();
             // Nếu cập nhật sang trạng thái "Đã trả"
             if (status.equals("Đã trả")) {
                 borrowRecord.setReturnDate(Date.valueOf(LocalDate.now()));
                 double fineAmount = 0;
+
 
                 for (BorrowRecordDetail detail : borrowRecordDetailList) {
                     if (detail.isReturned()) {
@@ -135,6 +215,8 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                                 fineAmount += bookItem.getCondition() * bookItem.getBook().getListPrice() / 100.0;
                             }
                         }
+                        libraryViolationTypeList.add(violationType);
+                        libraryCard.setViolationTypes(libraryViolationTypeList);
                     }
                 }
 
@@ -151,12 +233,23 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                         bookItem.setStatus("Đang mượn");
                         bookItemRepository.save(bookItem);
 
-                        book.setQuantityForBorrow(book.getQuantityForBorrow() - 1);
                         book.setBorrowQuantity(book.getBorrowQuantity() + 1);
                         bookRepository.save(book);
                     }
                 }
             }
+
+            if(status.equals("Hủy")){
+                for (BorrowRecordDetail detail : borrowRecordDetailList){
+                    BookItem bookItem = detail.getBookItem();
+                    bookItem.setStatus("Có sẵn");
+                    Book book = bookItem.getBook();
+                    book.setBorrowQuantity(book.getBorrowQuantity() + 1);
+                    bookItemRepository.save(bookItem);
+                    bookRepository.save(book);
+                }
+            }
+
 
             borrowRecordRepository.save(borrowRecord);
             return ResponseEntity.ok(new Notification("Cập nhật phiếu mượn thành công"));
@@ -187,6 +280,15 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
 
             borrowRecord.setStatus("Hủy");
             borrowRecordRepository.save(borrowRecord);
+            List<BorrowRecordDetail> borrowRecordDetailList = borrowRecordDetailRepository.findBorrowRecordDetailByBorrowRecord(borrowRecord);
+            for (BorrowRecordDetail detail : borrowRecordDetailList){
+                BookItem bookItem = detail.getBookItem();
+                bookItem.setStatus("Có sẵn");
+                bookItemRepository.save(bookItem);
+                Book book = bookItem.getBook();
+                book.setQuantityForBorrow(book.getQuantityForBorrow() + 1);
+                bookRepository.save(book);
+            }
 
             return ResponseEntity.ok(new Notification("Hủy phiếu mượn thành công"));
         } catch (Exception e) {
@@ -209,8 +311,6 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
         }
     }
 
-
-
     @Override
     public ResponseEntity<?> return1Book(JsonNode jsonNode) {
         try {
@@ -220,21 +320,25 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
             String notes = jsonNode.get("notes").asText(null);
 
             Optional<BorrowRecordDetail> detailOpt = borrowRecordDetailRepository.findById(id);
-            Optional<LibraryViolationType> violationTypeOpt = libraryViolationTypeRepository.findByCode(violationCode);
+            Optional<LibraryViolationType> violationTypeOpt =
+                    (violationCode != null && !violationCode.isBlank())
+                            ? libraryViolationTypeRepository.findByCode(violationCode)
+                            : Optional.empty();
 
             if (detailOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("Không tìm thấy chi tiết phiếu mượn");
             }
 
             BorrowRecordDetail detail = detailOpt.get();
-
-            detail.setViolationType(violationTypeOpt.orElse(null));
-            detail.setReturned(true);
-            detail.setNotes(notes);
             BookItem bookItem = detail.getBookItem();
 
-            if (violationCode.equals("Làm mất sách")) {
+
+            if ("Làm mất sách".equalsIgnoreCase(violationCode)) {
                 bookItem.setStatus("Đã mất");
+                Book book = bookItem.getBook();
+                book.setBorrowQuantity(book.getBorrowQuantity() - 1);
+                book.setQuantityForBorrow(book.getQuantityForBorrow());
+                bookRepository.save(book);
             } else {
                 bookItem.setStatus("Có sẵn");
                 bookItem.setCondition(bookItem.getCondition() - 1);
@@ -244,19 +348,35 @@ public class BorrowRecordServiceImp implements BorrowRecordService {
                 bookRepository.save(book);
             }
 
-            if (returnDateStr != null) {
-                detail.setReturnDate(Date.valueOf(LocalDate.parse(returnDateStr)));
+            detail.setNotes(notes);
+            detail.setReturned(true);
+
+            // Xử lý ngày trả
+            LocalDate returnDate = (returnDateStr != null)
+                    ? LocalDate.parse(returnDateStr)
+                    : LocalDate.now();
+            detail.setReturnDate(Date.valueOf(returnDate));
+
+            // Gán lỗi "Trả muộn" nếu không có lỗi và trả muộn
+            LocalDate dueDate = detail.getBorrowRecord().getDueDate().toLocalDate();
+            if ((violationCode == null || violationCode.isBlank()) && returnDate.isAfter(dueDate)) {
+                Optional<LibraryViolationType> lateViolationOpt = libraryViolationTypeRepository.findByCode("Trả muộn");
+                lateViolationOpt.ifPresent(detail::setViolationType);
             } else {
-                detail.setReturnDate(Date.valueOf(LocalDate.now()));
+                detail.setViolationType(violationTypeOpt.orElse(null));
             }
+
             bookItemRepository.save(bookItem);
             borrowRecordDetailRepository.save(detail);
+
             return ResponseEntity.ok().body("Trả sách thành công");
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body("Không thể trả sách: " + e.getMessage());
         }
     }
+
 
     private String generateRecordId() {
         String datePart = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));

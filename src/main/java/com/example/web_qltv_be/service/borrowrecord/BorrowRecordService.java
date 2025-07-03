@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 
 public interface BorrowRecordService {
     public ResponseEntity<?> save(JsonNode jsonNode);
+    public ResponseEntity<?> create(JsonNode jsonNode);
     public ResponseEntity<?> update(JsonNode jsonNode);
     public ResponseEntity<?> cancel(JsonNode jsonNode);
     public ResponseEntity<?> getByLibraryCard(String cardNumber);

@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -77,7 +78,8 @@ public class UserServiceImp implements UserService {
 
         // Cho role mặc định
         List<Role> roleList = new ArrayList<>();
-        roleList.add(roleRepository.findByNameRole("CUSTOMER"));
+        Optional<Role> role = roleRepository.findByNameRole("CUSTOMER");
+        roleList.add(role.get());
         user.setListRoles(roleList);
         // Lưu vào database
         userRepository.save(user);
@@ -90,73 +92,82 @@ public class UserServiceImp implements UserService {
 
     @Override
     public ResponseEntity<?> save(JsonNode userJson, String option) {
-        try{
+        try {
             User user = objectMapper.treeToValue(userJson, User.class);
 
-            // Kiểm tra username đã tồn tại chưa
             if (!option.equals("update")) {
                 if (userRepository.existsByUsername(user.getUsername())) {
                     return ResponseEntity.badRequest().body(new Notification("Username đã tồn tại."));
                 }
 
-                // Kiểm tra email
                 if (userRepository.existsByEmail(user.getEmail())) {
                     return ResponseEntity.badRequest().body(new Notification("Email đã tồn tại."));
                 }
             }
 
-            // Set ngày sinh cho user
+            // Parse ngày sinh
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
-            Instant instant = Instant.from(formatter.parse(formatStringByJson(String.valueOf(userJson.get("dateOfBirth")))) );
+            Instant instant = Instant.from(formatter.parse(formatStringByJson(String.valueOf(userJson.get("dateOfBirth")))));
             java.sql.Date dateOfBirth = new java.sql.Date(Date.from(instant).getTime());
             user.setDateOfBirth(dateOfBirth);
 
-            // Nếu là thêm mới, tạo thẻ thư viện
             if (option.equals("add")) {
+                // Tạo thẻ thư viện
                 LibraryCard libraryCard = new LibraryCard();
-                libraryCard.setActivated(false);
+                libraryCard.setCardNumber(user.getIdentifierCode());
+                libraryCard.setIssuedDate(java.sql.Date.valueOf(LocalDate.now()));
+                libraryCard.setExpiryDate(java.sql.Date.valueOf(LocalDate.now().plusDays(365)));
+                libraryCard.setStatus("Đang hoạt động");
+                libraryCard.setActivated(true);
                 libraryCard = libraryCardRepository.save(libraryCard);
                 user.setLibraryCard(libraryCard);
-            }
 
-            // Set role cho user (chỉ khi thêm mới)
-            if (option.equals("add")) {
-                int idRoleRequest = Integer.parseInt(String.valueOf(userJson.get("role")));
-                Optional<Role> role = roleRepository.findById(idRoleRequest);
-                List<Role> roles = new ArrayList<>();
-                roles.add(role.get());
-                user.setListRoles(roles);
-            }
+                // Gán role mặc định
+                Optional<Role> role = roleRepository.findByNameRole("CUSTOMER");
+                if (role.isEmpty()) {
+                    return ResponseEntity.badRequest().body(new Notification("Không tìm thấy role CUSTOMER"));
+                }
+                user.setListRoles(List.of(role.get()));
 
-            // Mã hoá mật khẩu
-            if (!(user.getPassword() == null) && !user.getPassword().isEmpty()) {
-                String encodePassword = passwordEncoder.encode(user.getPassword());
-                user.setPassword(encodePassword);
+                // Mặc định chưa kích hoạt
+                user.setEnabled(true);
             } else {
-                // Trường hợp cho update không thay đổi password
+                // ==== ⚠️ Đây là đoạn cần thêm để fix lỗi mất dữ liệu ====
+                Optional<User> userOldOpt = userRepository.findById(user.getIdUser());
+                if (userOldOpt.isEmpty()) {
+                    return ResponseEntity.badRequest().body(new Notification("Người dùng không tồn tại."));
+                }
+
+                User userOld = userOldOpt.get();
+                user.setLibraryCard(userOld.getLibraryCard());
+
+                if (user.getListRoles() == null || user.getListRoles().isEmpty()) {
+                    user.setListRoles(userOld.getListRoles());
+                }
+            }
+
+            // Mã hoá mật khẩu nếu được truyền
+            if (user.getPassword() != null && !user.getPassword().isEmpty()) {
+                user.setPassword(passwordEncoder.encode(user.getPassword()));
+            } else {
                 Optional<User> userTemp = userRepository.findById(user.getIdUser());
                 user.setPassword(userTemp.get().getPassword());
             }
 
-            // Set avatar
-            String avatar = (formatStringByJson(String.valueOf((userJson.get("avatar")))));
+            // Avatar
+            String avatar = formatStringByJson(String.valueOf((userJson.get("avatar"))));
             if (avatar.length() > 500) {
                 MultipartFile avatarFile = Base64ToMultipartFileConverter.convert(avatar);
                 String avatarURL = uploadImageService.uploadImage(avatarFile, "User_" + user.getIdUser());
                 user.setAvatar(avatarURL);
             }
 
-            // Set enabled status (mặc định là true cho user mới)
-            if (option.equals("add")) {
-                user.setEnabled(true);
-            }
-
             userRepository.save(user);
+            return ResponseEntity.ok("thành công");
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(new Notification("Lỗi xử lý người dùng."));
         }
-        return ResponseEntity.ok("thành công");
     }
 
     @Override

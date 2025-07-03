@@ -47,10 +47,10 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, Endpoints.PUBLIC_POST).permitAll()
                         .requestMatchers(HttpMethod.PUT, Endpoints.PUBLIC_PUT).permitAll()
                         .requestMatchers(HttpMethod.DELETE, Endpoints.PUBLIC_DELETE).permitAll()
-                        .requestMatchers(HttpMethod.GET, Endpoints.ADMIN_ENDPOINT).hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.POST, Endpoints.ADMIN_ENDPOINT).hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, Endpoints.ADMIN_ENDPOINT).hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, Endpoints.ADMIN_ENDPOINT).hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.GET, Endpoints.ADMIN_ENDPOINT).hasAnyAuthority("ADMIN","STAFF")
+                        .requestMatchers(HttpMethod.POST, Endpoints.ADMIN_ENDPOINT).hasAnyAuthority("ADMIN","STAFF")
+                        .requestMatchers(HttpMethod.PUT, Endpoints.ADMIN_ENDPOINT).hasAnyAuthority("ADMIN","STAFF")
+                        .requestMatchers(HttpMethod.DELETE, Endpoints.ADMIN_ENDPOINT).hasAnyAuthority("ADMIN","STAFF")
         );
         // Cấu hình cors
         http.cors(cors -> {
