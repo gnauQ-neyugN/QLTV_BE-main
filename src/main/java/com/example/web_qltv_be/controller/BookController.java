@@ -63,6 +63,23 @@ public class BookController {
         }
     }
 
+    @GetMapping("/book-items/search-barcode")
+    public ResponseEntity<?> searchBookItemsByBarcode(@RequestParam String keyword) {
+        try {
+            List<BookItem> items = bookItemRepository.findAvailableByBarcodeContaining(keyword);
+
+            List<BookItemDTO> dtos = items.stream()
+                    .map(BookItemDTO::new)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(dtos);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body("Lỗi khi tìm kiếm barcode");
+        }
+    }
+
+
 
     @GetMapping(path = "/get-total")
     public long getTotal() {

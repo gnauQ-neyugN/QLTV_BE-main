@@ -1,6 +1,8 @@
 package com.example.web_qltv_be.service.bookitem;
 
 import com.example.web_qltv_be.dao.BookItemRepository;
+import com.example.web_qltv_be.dao.BookRepository;
+import com.example.web_qltv_be.entity.Book;
 import com.example.web_qltv_be.entity.BookItem;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Service;
 public class BookItemServiceImp implements BookItemService {
     @Autowired
     private BookItemRepository bookItemRepository;
+    @Autowired
+    private BookRepository bookRepository;
 
     private final ObjectMapper objectMapper;
 
@@ -46,6 +50,9 @@ public class BookItemServiceImp implements BookItemService {
             if (existingItem == null) {
                 return ResponseEntity.badRequest().body("Không tìm thấy BookItem với ID: " + idBookItem);
             }
+            Book book = existingItem.getBook();
+            book.setQuantityForBorrow(book.getQuantityForBorrow() - 1);
+            bookRepository.save(book);
             bookItemRepository.delete(existingItem);
             return ResponseEntity.ok("Đã xóa BookItem với ID: " + idBookItem);
         } catch (Exception e) {

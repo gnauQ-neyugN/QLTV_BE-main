@@ -44,14 +44,15 @@ public class LibraryCardServiceImp implements LibraryCardService {
             if(userOptional.isEmpty()){
                 return ResponseEntity.badRequest().build();
             }
+
             int idLibraryCard = userOptional.get().getLibraryCard().getIdLibraryCard();
             String cardNumber = formatStringByJson(String.valueOf(jsonNode.get("cardNumber")));
             Optional<LibraryCard> libraryCard = libraryCardRepository.findById(idLibraryCard);
             libraryCard.get().setCardNumber(cardNumber);
             libraryCard.get().setIssuedDate(Date.valueOf(LocalDate.now()));
             libraryCard.get().setExpiryDate(Date.valueOf(LocalDate.now().plusDays(365)));
-            libraryCard.get().setActivated(true);
-            libraryCard.get().setStatus("Đang hoạt động");
+            libraryCard.get().setActivated(false);
+            libraryCard.get().setStatus("Chưa kích hoạt");
 
             libraryCardRepository.save(libraryCard.get());
         } catch (Exception e) {
@@ -71,7 +72,8 @@ public class LibraryCardServiceImp implements LibraryCardService {
                 return ResponseEntity.notFound().build();
             }
             Date expiryNewDate = Date.valueOf(formatStringByJson(String.valueOf(jsonNode.get("expiryNewDate"))));
-
+            libraryCard.get().setActivated(true);
+            libraryCard.get().setStatus("Đang hoạt động");
             libraryCard.get().setExpiryDate(expiryNewDate);  // Fixed: was setting issuedDate instead of expiryDate
             libraryCardRepository.save(libraryCard.get());
         }catch (Exception e){

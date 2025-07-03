@@ -69,14 +69,14 @@ public class BookServiceImp implements BookService {
             }
             // Lưu trước để lấy id sách đặt tên cho ảnh
             Book newBook = bookRepository.save(book);
-
+            String location = bookJson.get("location").asText();
             // Tạo danh sách BookItem tương ứng với quantityForBorrow
             List<BookItem> bookItemList = new ArrayList<>();
             for (int i = 0; i < newBook.getQuantityForBorrow(); i++) {
                 BookItem bookItem = new BookItem();
                 bookItem.setBook(newBook);
                 bookItem.setStatus("Có sẵn");
-                bookItem.setLocation("Chưa cập nhật");
+                bookItem.setLocation(location);
                 bookItem.setCondition(100);
                 bookItem.setBarcode(cleanedIsbn + "-" + (i + 1));
 
@@ -172,14 +172,19 @@ public class BookServiceImp implements BookService {
             int currentBookItemCount = bookItemRepository.countByBook(newBook);
             int updatedQuantity = newBook.getQuantityForBorrow();
             String cleanedIsbn = book.getIsbn().replaceAll("-", "");
-
+            String location = bookJson.get("location").asText();
+            List<BookItem> currentBookItems = bookItemRepository.findByBook(newBook);
+            for(BookItem bookItem : currentBookItems) {
+                bookItem.setLocation(location);
+                bookItemRepository.save(bookItem);
+            }
             if (updatedQuantity > currentBookItemCount) {
                 List<BookItem> newItems = new ArrayList<>();
                 for (int i = currentBookItemCount + 1; i <= updatedQuantity; i++) {
                     BookItem bookItem = new BookItem();
                     bookItem.setBook(newBook);
                     bookItem.setStatus("Có sẵn");
-                    bookItem.setLocation("Chưa cập nhật");
+                    bookItem.setLocation(location);
                     bookItem.setCondition(100);
                     bookItem.setBarcode(cleanedIsbn + "-" + i);
                     newItems.add(bookItem);

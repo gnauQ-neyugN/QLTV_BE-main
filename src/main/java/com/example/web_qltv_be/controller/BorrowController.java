@@ -22,6 +22,16 @@ public class BorrowController {
         }
     }
 
+    @PostMapping("/create-borrow-record")
+    public ResponseEntity<?> create(@RequestBody JsonNode jsonData) {
+        try {
+            return borrowRecordService.create(jsonData);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @PutMapping("/update-borrow-record")
     public ResponseEntity<?> update(@RequestBody JsonNode jsonData) {
         try {
